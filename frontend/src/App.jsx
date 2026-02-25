@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import MapComponent from './components/MapComponent';
 import Sidebar from './components/Sidebar';
 import './index.css';
@@ -27,6 +27,24 @@ function App() {
 
   // Base Map Style
   const [mapStyle, setMapStyle] = useState('dark');
+
+  // Layer order for reference layers (top of list = rendered at bottom on map)
+  const [layerOrder, setLayerOrder] = useState([
+    'areas_protegidas',
+    'sitios_prioritarios',
+    'ecosistemas',
+    'concesiones',
+    'ecmpo',
+    'concesiones_mineras_const',
+    'concesiones_mineras_tramite',
+    'regiones',
+    'provincias',
+    'comunas'
+  ]);
+
+  const handleReorderLayers = useCallback((newOrder) => {
+    setLayerOrder(newOrder);
+  }, []);
 
   const handleToggleLayer = (layerId) => {
     setActiveLayers((prev) => ({
@@ -196,6 +214,8 @@ function App() {
           mapStyle={mapStyle}
           setMapStyle={setMapStyle}
           onClearHistory={clearAllHistory}
+          layerOrder={layerOrder}
+          onReorderLayers={handleReorderLayers}
         />
       </aside>
 
@@ -208,6 +228,7 @@ function App() {
           activeLayers={activeLayers}
           mapStyle={mapStyle}
           results={results}
+          layerOrder={layerOrder}
         />
       </main>
     </div>

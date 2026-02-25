@@ -25,7 +25,7 @@ if (!protocolAdded) {
 }
 
 
-const MapComponent = forwardRef(({ onAnalyzePolygon, isAnalyzing, activeLayers, mapStyle, results, onMapReady }, ref) => {
+const MapComponent = forwardRef(({ onAnalyzePolygon, isAnalyzing, activeLayers, mapStyle, results, onMapReady, layerOrder }, ref) => {
     const mapContainer = useRef(null);
     const map = useRef(null);
     const draw = useRef(null);
@@ -597,6 +597,38 @@ const MapComponent = forwardRef(({ onAnalyzePolygon, isAnalyzing, activeLayers, 
             map.current.setLayoutProperty('base-map-satellite', 'visibility', mapStyle === 'satellite' ? 'visible' : 'none');
         }
     }, [mapStyle]);
+
+    // Sync layer z-order when layerOrder changes
+    useEffect(() => {
+        if (!map.current || !layerOrder || layerOrder.length === 0) return;
+
+        // layerOrder[0] = top of sidebar = bottom on map
+        // layerOrder[last] = bottom of sidebar = top on map (just below terrenos)
+        // We iterate in order so each subsequent layer gets placed above the previous
+        const tryMove = () => {
+            // Move layers in order: first item at bottom, last item at top
+            for (let i = 0; i < layerOrder.length; i++) {
+                const layerId = layerOrder[i];
+                const fillId = `${layerId}-fill`;
+                const lineId = `${layerId}-line`;
+
+                // Move fill layer before 'terrenos-fill' (so it stays below terrenos)
+                if (map.current.getLayer(fillId)) {
+                    map.current.moveLayer(fillId, 'terrenos-fill');
+                }
+                if (map.current.getLayer(lineId)) {
+                    map.current.moveLayer(lineId, 'terrenos-fill');
+                }
+            }
+        };
+
+        // Layers might not be ready yet if map is still loading
+        if (map.current.isStyleLoaded()) {
+            tryMove();
+        } else {
+            map.current.once('idle', tryMove);
+        }
+    }, [layerOrder]);
 
     return (
         <div className="relative w-full h-full">

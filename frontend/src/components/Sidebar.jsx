@@ -6,12 +6,12 @@ import {
     Tooltip,
     Legend
 } from 'chart.js';
-import { Layers, PenTool, Map as MapIcon, MapPin, Spline, Hexagon, Upload, Download } from 'lucide-react';
+import { Layers, PenTool, Map as MapIcon, MapPin, Spline, Hexagon, Upload, Download, GripVertical } from 'lucide-react';
 import LogoImage from '../assets/Logo.png';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const Sidebar = ({ isAnalyzing, results, showResultsPanel, setShowResultsPanel, error, onReset, onStartDrawing, activeDrawMode, onFileUpload, activeLayers, onToggleLayer, mapStyle, setMapStyle, onClearHistory }) => {
+const Sidebar = ({ isAnalyzing, results, showResultsPanel, setShowResultsPanel, error, onReset, onStartDrawing, activeDrawMode, onFileUpload, activeLayers, onToggleLayer, mapStyle, setMapStyle, onClearHistory, layerOrder, onReorderLayers }) => {
 
     const [formationsMap, setFormationsMap] = React.useState({});
     const [expandedFormations, setExpandedFormations] = React.useState({});
@@ -63,6 +63,8 @@ const Sidebar = ({ isAnalyzing, results, showResultsPanel, setShowResultsPanel, 
     };
 
     const [showDownloadMenu, setShowDownloadMenu] = React.useState(false);
+    const [draggedLayer, setDraggedLayer] = React.useState(null);
+    const [dragOverLayer, setDragOverLayer] = React.useState(null);
 
     const handleDownloadData = (format) => {
         if (!results || results.length === 0) return;
@@ -267,10 +269,52 @@ const Sidebar = ({ isAnalyzing, results, showResultsPanel, setShowResultsPanel, 
                 <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
                     <Layers className="w-5 h-5 text-slate-400" /> CAPAS DE REFERENCIA
                 </h3>
-                <div className="space-y-3">
-                    {['areas_protegidas', 'sitios_prioritarios', 'ecosistemas', 'concesiones', 'ecmpo', 'concesiones_mineras_const', 'concesiones_mineras_tramite', 'regiones', 'provincias', 'comunas'].map((layerId) => (
-                        <div key={layerId} className="flex flex-col gap-1">
-                            <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="space-y-1">
+                    {(layerOrder || ['areas_protegidas', 'sitios_prioritarios', 'ecosistemas', 'concesiones', 'ecmpo', 'concesiones_mineras_const', 'concesiones_mineras_tramite', 'regiones', 'provincias', 'comunas']).map((layerId) => (
+                        <div
+                            key={layerId}
+                            draggable
+                            onDragStart={(e) => {
+                                setDraggedLayer(layerId);
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('text/plain', layerId);
+                                e.currentTarget.style.opacity = '0.4';
+                            }}
+                            onDragEnd={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                                setDraggedLayer(null);
+                                setDragOverLayer(null);
+                            }}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                if (layerId !== draggedLayer) {
+                                    setDragOverLayer(layerId);
+                                }
+                            }}
+                            onDragLeave={() => {
+                                setDragOverLayer(null);
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                if (!draggedLayer || draggedLayer === layerId) return;
+                                const currentOrder = [...(layerOrder || [])];
+                                const fromIdx = currentOrder.indexOf(draggedLayer);
+                                const toIdx = currentOrder.indexOf(layerId);
+                                if (fromIdx === -1 || toIdx === -1) return;
+                                currentOrder.splice(fromIdx, 1);
+                                currentOrder.splice(toIdx, 0, draggedLayer);
+                                onReorderLayers(currentOrder);
+                                setDraggedLayer(null);
+                                setDragOverLayer(null);
+                            }}
+                            className={`flex flex-col gap-1 rounded-md transition-all duration-150 ${dragOverLayer === layerId
+                                    ? 'border-t-2 border-blue-500 pt-1'
+                                    : 'border-t-2 border-transparent'
+                                } ${draggedLayer === layerId ? 'opacity-40' : ''}`}
+                        >
+                            <label className="flex items-center gap-2 cursor-pointer group px-2 py-1.5 rounded-md hover:bg-slate-800/60 transition-colors">
+                                <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0 transition-colors" />
                                 <div className="relative flex items-center">
                                     <input
                                         type="checkbox"
@@ -290,6 +334,7 @@ const Sidebar = ({ isAnalyzing, results, showResultsPanel, setShowResultsPanel, 
                         </div>
                     ))}
                 </div>
+                <p className="text-[10px] text-slate-500 mt-3 italic px-1">⇅ Arrastra para reordenar. Arriba en la lista = más al fondo en el mapa.</p>
             </div>
         </div>
     );
