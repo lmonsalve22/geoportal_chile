@@ -480,6 +480,15 @@ const MapComponent = forwardRef(({ onAnalyzePolygon, isAnalyzing, activeLayers, 
         // Whenever map style completely reloads, we need to add the source back if lost.
         // Wait, standard style updates via setLayoutProperty don't wipe sources, so this is fine.
 
+        // Al desmontar hay que destruir el mapa: remove() libera el contexto
+        // WebGL y da de baja los listeners registrados mas arriba.
+        return () => {
+            if (map.current) {
+                map.current.remove();
+                map.current = null;
+            }
+        };
+
     }, []); // Empty dependency array means init map only once
 
     // Sync `results` array to `terrenos-source`
